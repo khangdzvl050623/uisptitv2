@@ -678,6 +678,19 @@ bench/benchmark        docs/phan-b             docs/phan-c
 3. **Tự test kỹ trên máy mình trước khi merge.** Chạy được, không lỗi, không làm hỏng phần người khác — trách nhiệm của người mở PR.
 4. **Không merge PR khi còn conflict.**
 
+### Repo đang bật gì
+
+Bảo vệ nhánh dùng **Rulesets** (Settings → Rules → Rulesets), không dùng branch protection kiểu cũ:
+
+| Ruleset | Áp cho | Rule đang bật |
+|---|---|---|
+| `main - can approval cua owner` | `refs/heads/main` | Bắt buộc PR · **1 approval** · **CODEOWNERS** phải duyệt · gỡ approve khi push thêm · cấm xoá nhánh · cấm force-push |
+| `dev - bat buoc PR, khong can approval` | `refs/heads/dev` | Bắt buộc PR · **0 approval** (tự merge sau khi test) · cấm xoá nhánh · cấm force-push |
+
+Cả hai ruleset đều có **bypass cho vai trò Admin** ở chế độ *Always* — owner vẫn push thẳng được khi thật sự cần. Đây là lối thoát hiểm, **không phải cách làm việc hằng ngày**: mọi thay đổi bình thường vẫn đi qua PR.
+
+> ⚠️ **Vì sao owner cần bypass:** GitHub không cho tự approve PR của chính mình. Khi chỉ có owner làm việc, PR `dev → main` sẽ không ai duyệt được. Bypass gỡ bế tắc đó. Khi nhóm đã có đủ người, hãy để thành viên khác approve cho đúng quy trình.
+
 ### Mức duyệt khác nhau giữa hai nhánh
 
 | PR vào | Cần approval? | Ai merge |
