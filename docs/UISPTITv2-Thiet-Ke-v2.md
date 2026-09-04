@@ -2,6 +2,9 @@
 
 > **Đồ án cuối kỳ — Cơ sở dữ liệu phân tán.**
 > **Đây là tài liệu duy nhất của dự án.** Cấu trúc bám sát mục 2–3 của đề bài để nạp thẳng vào báo cáo.
+>
+> ✅ **THIẾT KẾ ĐÃ CHỐT.** Mọi thay đổi từ đây phải qua thảo luận nhóm và ghi vào bảng quyết định (0.1).
+> Xem sơ đồ toàn cảnh các luồng hoạt động ở [README](../README.md#toàn-cảnh-luồng-hoạt-động).
 
 ---
 

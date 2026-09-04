@@ -20,25 +20,37 @@ Một trường có nhiều cơ sở đào tạo đặt tại các tỉnh/thành
 
 ## Kiến trúc
 
+```mermaid
+flowchart TB
+    U["Sinh viên · Giảng viên · Admin<br/>Laptop hoặc điện thoại 4G"]
+    PUB["URL HTTPS công khai<br/>Cloudflare Tunnel"]
+    API["SRV-HCM · Spring Boot<br/>React đã build + REST API<br/>Xác thực · SiteContext · Định tuyến"]
+
+    subgraph VPN["Mạng riêng VPN — CHỈ các máy chủ tham gia"]
+        MASTER[("UIS_MASTER<br/>Danh mục + DanhBaNguoiDung<br/>Publisher · Distributor")]
+        HCM[("UIS_HCM<br/>Mảnh vận hành HCM")]
+        HN[("UIS_HN<br/>Mảnh vận hành HN")]
+        DN[("UIS_DN<br/>Mảnh vận hành ĐN")]
+    end
+
+    U -->|"HTTPS 443"| PUB
+    PUB -->|"tunnel về localhost:8080"| API
+
+    API -->|"JDBC 1433"| HCM
+    API -->|"JDBC 1433"| HN
+    API -->|"JDBC 1433"| DN
+    API -->|"chỉ quản trị danh mục"| MASTER
+
+    MASTER ==>|"Replication"| HCM
+    MASTER ==>|"Replication"| HN
+    MASTER ==>|"Replication"| DN
+
+    HCM -.->|"Linked Server · CHỈ báo cáo"| HN
+    HCM -.->|"Linked Server · CHỈ báo cáo"| DN
+    HCM <-.->|"MS DTC · 2PC chuyển cơ sở"| HN
 ```
-              ┌──────────────────────────────────────────┐
-              │  UIS_MASTER — VAI TRÒ MASTER             │
-              │  Publisher · Distributor                 │
-              │  CoSo · Khoa · CTDT · MonHoc · HocKy     │
-              │  DanhBaNguoiDung                          │
-              └────┬──────────────┬──────────────┬───────┘
-                   │              │              │
-          Transactional Replication một chiều (~vài giây)
-                   ▼              ▼              ▼
-      ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
-      │    UIS_HCM     │ │    UIS_HN      │ │    UIS_DN      │
-      │  Subscriber    │ │  Subscriber    │ │  Subscriber    │
-      │  + mảnh vận    │ │  + mảnh vận    │ │  + mảnh vận    │
-      │    hành riêng  │ │    hành riêng  │ │    hành riêng  │
-      └────────────────┘ └────────────────┘ └────────────────┘
-              └──── Linked Server hình sao ────┘
-                    (CHỈ cho thống kê toàn hệ thống)
-```
+
+> **Người dùng chỉ biết một URL HTTPS. API biết Home/Host và chọn database. VPN chỉ nối các máy chủ với nhau. Database không bao giờ xuất hiện trước người dùng.**
 
 **Hai chế độ ghi** — đây là điểm cốt lõi của thiết kế:
 
@@ -94,6 +106,228 @@ Benchmark **B5** đo cả hai trên cùng một nghiệp vụ để chứng minh
 
 ---
 
+## Toàn cảnh luồng hoạt động
+
+### Năm loại kết nối — và chỉ năm
+
+| # | Kết nối | Giao thức · cổng | Mục đích |
+|---|---|---|---|
+| 1 | Người dùng → API | **HTTPS 443** | Mọi nghiệp vụ của SV/GV/Admin |
+| 2 | API → CSDL | **JDBC/TDS 1433** qua VPN | Đọc/ghi nghiệp vụ, saga, duyệt catalog site khác |
+| 3 | Master → Subscriber | **Replication** qua VPN | Đồng bộ danh mục + danh bạ |
+| 4 | Reporting Node → site | **Linked Server** qua VPN | **Chỉ** báo cáo của Admin |
+| 5 | Site ↔ Site | **MS DTC — TCP 135 + RPC động 49152–65535** | **Giao dịch phân tán** (chuyển cơ sở) |
+
+⚠️ Loại 5 **không đi qua cổng 1433** — đây là hạ tầng riêng và là chỗ dễ quên nhất khi mở firewall.
+⚠️ **Linked Server không phục vụ đăng nhập, đăng ký hay xem điểm.** Nó chỉ dành cho báo cáo của Admin.
+
+### 1. Mở API ra Internet hoạt động thế nào
+
+Máy chạy API nằm sau modem gia đình, không có IP công khai. Điện thoại 4G không thể gọi thẳng `192.168.1.10:8080`. Tunnel giải quyết bằng cách **mở kết nối từ trong ra**:
+
+```mermaid
+sequenceDiagram
+    participant P as Điện thoại 4G
+    participant CF as Cloudflare
+    participant API as Spring Boot localhost:8080
+    participant DB as SQL Server trong VPN
+
+    API->>CF: Chủ động mở tunnel đi RA
+    Note over API,CF: Không cần mở port router<br/>Không cần IP tĩnh
+    P->>CF: HTTPS tới URL công khai
+    CF->>API: Chuyển request qua tunnel
+    API->>DB: JDBC 1433 qua VPN
+    DB-->>API: Dữ liệu
+    API-->>CF: JSON
+    CF-->>P: HTTPS response
+```
+
+**Internet chỉ nhìn thấy HTTPS 443 của Cloudflare.** Cổng 1433 chỉ mở trên interface VPN, không bao giờ forward trên modem. Không public SSMS, SMB hay SQL Server Agent.
+
+### 2. Đăng nhập — bài toán con gà và quả trứng
+
+Muốn biết định tuyến vào CSDL nào thì phải biết người dùng thuộc cơ sở nào; muốn biết điều đó thì phải đọc CSDL. Danh bạ nhân bản chính là lời giải:
+
+```mermaid
+sequenceDiagram
+    participant U as Người dùng
+    participant API as Spring Boot API
+    participant DIR as DanhBaNguoiDung<br/>replica cục bộ
+    participant SITE as CSDL cơ sở tương ứng
+
+    U->>API: POST /api/auth/login
+    API->>DIR: Tra TenDangNhap
+    Note over DIR: Đọc từ replica của site NÀO CŨNG ĐƯỢC<br/>vì chúng giống hệt nhau
+    DIR-->>API: MaCoSo · LoaiNguoiDung · TrangThai
+    API->>SITE: SiteContext = MaCoSo<br/>đọc TaiKhoan
+    SITE-->>API: MatKhauHash · VaiTro
+    API->>API: Kiểm tra mật khẩu
+    API-->>U: JWT chứa sub · role · homeCampus
+    Note over API,U: Request sau đọc claim từ JWT ĐÃ KÝ<br/>TUYỆT ĐỐI không tin tham số client gửi lên
+```
+
+Danh bạ phủ **mọi vai trò**, không riêng sinh viên — nhờ vậy giảng viên và Admin không phải tự chọn cơ sở lúc đăng nhập, và Admin Master có chỗ ở hợp lệ (`TaiKhoanMaster` trong `UIS_MASTER`).
+
+### 3. Đăng ký học phần cùng cơ sở — không 2PC, không Linked Server
+
+```mermaid
+sequenceDiagram
+    participant SV as Sinh viên HN
+    participant API as API
+    participant HN as UIS_HN
+
+    SV->>API: POST /api/dang-ky
+    API->>API: JWT → homeCampus = HN
+    API->>HN: BEGIN TRAN
+    HN->>HN: UPDATE sức chứa CÓ ĐIỀU KIỆN<br/>WHERE SoLuongDaDangKy < SoLuongToiDa
+    alt ROWCOUNT = 0
+        HN-->>API: Lớp đã đầy → ROLLBACK
+    else Còn chỗ
+        HN->>HN: INSERT DangKyHocPhan
+        HN->>HN: COMMIT
+        HN-->>API: Thành công
+    end
+    API-->>SV: Kết quả
+```
+
+Toàn bộ giao dịch nằm trong `UIS_HN` → không thể vượt sức chứa, và bấm hai lần bị chặn bởi `UNIQUE(MaSinhVien, MaLopHP)`.
+
+### 4. Đăng ký liên cơ sở — Saga, không 2PC
+
+```mermaid
+sequenceDiagram
+    participant SV as Sinh viên HCM
+    participant API as API
+    participant HOME as UIS_HCM · Home
+    participant HOST as UIS_HN · Host
+
+    SV->>API: POST /api/dang-ky lớp của HN
+    API->>HOME: Kiểm hồ sơ · tín chỉ · tiên quyết · trùng lịch
+    API->>HOME: INSERT YeuCauHocLienCoSo CHO_DUYET<br/>MaYeuCau = idempotency key
+    API->>HOST: runAt HN qua JDBC
+    HOST->>HOST: Tra KetQuaXuLyYeuCau theo MaYeuCau
+    alt Đã xử lý trước đó
+        HOST-->>API: Trả NGUYÊN kết quả cũ
+    else Chưa xử lý
+        HOST->>HOST: UPDATE sức chứa + INSERT đăng ký
+        HOST->>HOST: INSERT KetQuaXuLyYeuCau<br/>lưu CẢ khi từ chối
+        HOST-->>API: Kết quả
+    end
+    API->>HOME: DA_DUYET / TU_CHOI + ghi snapshot lớp
+    API-->>SV: Trạng thái
+```
+
+**Mất mạng sau khi Host đã ghi nhận?** Home vẫn giữ `CHO_DUYET`, worker gửi lại cùng `MaYeuCau`, Host tra `KetQuaXuLyYeuCau` và trả đúng kết quả cũ — **không tăng sĩ số lần hai**.
+**Host đang tắt?** Sinh viên thấy "đang chờ cơ sở HN", không khoá tài nguyên nào ở Home.
+
+### 5. ⭐ Chuyển cơ sở sinh viên — GIAO DỊCH PHÂN TÁN (yêu cầu bắt buộc số 3)
+
+Đây là luồng duy nhất mà **API không điều phối** — nó chỉ gọi một stored procedure, còn SQL Server tự lo 2 pha qua MS DTC:
+
+```mermaid
+sequenceDiagram
+    participant AD as Admin Master
+    participant API as API
+    participant SP as sp_ChuyenCoSoSinhVien
+    participant OLD as UIS_HCM · cơ sở cũ
+    participant NEW as UIS_HN · cơ sở mới
+    participant M as UIS_MASTER
+
+    AD->>API: POST /api/chuyen-co-so
+    API->>SP: EXEC — API chỉ GỌI, không điều phối
+    SP->>SP: Kiểm tiền điều kiện<br/>không còn CHO_DUYET · Outbox đã xả
+    SP->>SP: SET XACT_ABORT ON<br/>BEGIN DISTRIBUTED TRANSACTION
+    SP->>NEW: INSERT SinhVien + TaiKhoan qua Linked Server
+    SP->>OLD: DELETE SinhVien + TaiKhoan
+    SP->>M: UPDATE DanhBaNguoiDung
+    alt Cả ba site OK
+        SP->>SP: COMMIT — MS DTC hai pha
+        SP-->>API: Thành công
+    else Bất kỳ site nào lỗi
+        SP->>SP: ROLLBACK TOÀN BỘ
+        Note over OLD,M: Sinh viên NGUYÊN VẸN ở cơ sở cũ<br/>Danh bạ KHÔNG đổi · không có trạng thái nửa vời
+        SP-->>API: Thất bại
+    end
+    API-->>AD: Kết quả
+```
+
+**Khác biệt với saga:** saga để lại trạng thái trung gian cần bù trừ; 2PC thì **hoặc xong hết, hoặc như chưa từng xảy ra**.
+
+### 6. Nhập điểm và Outbox
+
+```mermaid
+sequenceDiagram
+    participant GV as Giảng viên HN
+    participant API as API
+    participant HN as UIS_HN
+    participant W as OutboxWorker
+    participant HCM as UIS_HCM
+
+    GV->>API: PUT /api/lop/.../diem
+    API->>HN: BEGIN TRAN
+    HN->>HN: UPDATE Diem
+    HN->>HN: INSERT OutboxSuKien<br/>CHỈ cho sinh viên KHÁCH
+    HN->>HN: COMMIT
+    HN-->>API: OK
+    API-->>GV: Đã lưu điểm
+
+    W->>HN: Đọc Outbox PENDING
+    W->>HCM: Upsert BangDiemMirror<br/>chỉ ghi đè nếu Version mới hơn
+    W->>HN: Đánh dấu SENT
+    Note over W,HN: Thứ tự này quyết định tính đúng đắn<br/>upsert TRƯỚC, đánh dấu SAU
+```
+
+Sinh viên có cơ sở nhà **trùng** site đang nhập điểm thì `Diem` đã nằm đúng chỗ — không cần event. Với tỉ lệ liên cơ sở ~2%, điều này cắt ~98% lượng Outbox.
+
+### 7. Đọc thời khóa biểu và bảng điểm — thuần cục bộ
+
+```mermaid
+flowchart LR
+    SV["Sinh viên HCM"] --> API["GET /api/lich-hoc/me<br/>GET /api/diem/me"]
+    API --> L1["Lớp tại HCM<br/>DangKyHocPhan + LopHocPhan"]
+    API --> L2["Lớp liên cơ sở<br/>snapshot trong YeuCauHocLienCoSo"]
+    API --> L3["Điểm lớp HN/ĐN<br/>BangDiemMirror"]
+    L1 --> R["Kết quả hợp nhất"]
+    L2 --> R
+    L3 --> R
+    R --> SV
+    R -.->|"CHỈ khi bấm Làm mới"| HN["UIS_HN — dữ liệu tươi"]
+```
+
+**Không fan-out mặc định.** HN tắt thì sinh viên vẫn xem được, kèm nhãn *"đồng bộ từ HN lúc 14:32"*. Mirror lo **tính sẵn sàng**, fan-out lo **độ tươi**.
+
+### 8. Báo cáo toàn hệ thống — nơi duy nhất dùng Linked Server
+
+```mermaid
+flowchart LR
+    AD["Admin Master"] --> API["API báo cáo"]
+    API --> RN["Global Reporting Node<br/>UIS_HCM"]
+    RN --> H["UIS_HCM — cục bộ"]
+    RN -.->|"OPENQUERY"| HN["UIS_HN"]
+    RN -.->|"OPENQUERY"| DN["UIS_DN"]
+    H --> RS["Kết quả tổng hợp"]
+    HN --> RS
+    DN --> RS
+    RS --> AD
+```
+
+`GROUP BY` chạy **tại từng site**, chỉ kết quả rút gọn đi qua mạng. Sinh viên và giảng viên không bao giờ kích hoạt được Linked Server.
+
+### 9. Khi một máy tắt thì chức năng nào còn chạy
+
+| Sự cố | Kết quả |
+|---|---|
+| **`UIS_MASTER` tắt** | ✅ Đăng nhập, đăng ký, xem lịch, nhập điểm **vẫn chạy** bằng replica. Chỉ mất: sửa danh mục, nhân bản thay đổi mới, báo cáo tổng hợp |
+| **`UIS_HN` tắt** | HCM và ĐN chạy bình thường; sinh viên HN không thao tác được (tài khoản nằm tại HN) |
+| HN tắt khi SV HCM đăng ký lớp HN | Yêu cầu giữ `CHO_DUYET`, worker retry sau |
+| HN tắt khi SV HCM xem lịch / điểm | ✅ Vẫn xem được từ snapshot và mirror, có thể hơi cũ |
+| **Máy API tắt** | ❌ Toàn bộ website ngừng — **điểm chết đơn lẻ của kiến trúc một API** |
+| Tunnel tắt | Không vào được từ Internet; LAN/VPN vẫn gọi API bình thường |
+
+> `UIS_MASTER` là **SPOF của control plane, không phải SPOF của data plane** — đó là đánh đổi được chấp nhận có chủ đích.
+
+---
+
 ## Điểm đặc biệt: X-Ray Phân Tán
 
 Môn CSDLPT dạy toàn những thứ **không nhìn thấy được**. X-Ray làm chúng hiện ra theo thời gian thực — mọi response mang theo một trace, giao diện vẽ lại đúng đường đi của request đó qua hệ thống:
@@ -144,7 +378,8 @@ Toàn bộ thiết kế nằm trong **một tài liệu duy nhất**: [`docs/UIS
 
 | Bạn đang cần… | Đọc mục |
 |---|---|
-| Nắm nhanh dự án trong 5 phút | **0.1** bảng quyết định · **0.2** X-Ray · **C0** hai chế độ ghi |
+| Nắm nhanh dự án trong 5 phút | Mục **Toàn cảnh luồng hoạt động** ngay trong README này |
+| Hiểu chi tiết một quyết định | **0.1** bảng quyết định · **0.2** X-Ray · **C0** hai chế độ ghi |
 | Viết báo cáo mục 2.1 / 2.2.1 / 2.2.2 | **Phần A** / **B** / **C** |
 | Làm cài đặt vật lý (mục 3 đề bài) | **Phần F** chi tiết · **I5** checklist tick nhanh |
 | ⭐ Biết đâu là phần **không được phép thiếu** | **0.1b** — năm yêu cầu bắt buộc |
@@ -372,7 +607,9 @@ Commit kèm một file `.env.example` chỉ có tên biến, không có giá tr�
 
 ## Trạng thái
 
-**Giai đoạn hiện tại:** thiết kế đã chốt, chưa bắt đầu cài đặt.
+✅ **THIẾT KẾ ĐÃ CHỐT** — chưa bắt đầu cài đặt.
+
+Mọi thay đổi thiết kế từ đây phải qua thảo luận nhóm và ghi vào bảng quyết định (mục 0.1 của tài liệu thiết kế).
 
 Nguyên tắc thi công: **không viết dòng code ứng dụng nào trước khi phần cài đặt vật lý đã PASS và đã chụp đủ screenshot.**
 
