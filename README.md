@@ -140,6 +140,160 @@ Toàn bộ thiết kế nằm trong **một tài liệu duy nhất**: [`docs/UIS
 
 ---
 
+## Cài đặt & chạy
+
+### 0. Công cụ cần cài
+
+| Công cụ | Bản | Ghi chú |
+|---|---|---|
+| **SQL Server Developer Edition** | 2019 / 2022 | Miễn phí. **Không dùng Express** |
+| **SSMS** (SQL Server Management Studio) | mới nhất | Dùng cho wizard Replication — bước bắt buộc chụp màn hình |
+| **JDK** | 17 hoặc 21 | Temurin / Microsoft Build of OpenJDK |
+| **Maven** | 3.9+ | Hoặc dùng `mvnw` kèm sẵn trong project |
+| **Node.js** | 20 LTS | Kèm npm |
+| **Radmin VPN** | mới nhất | Hoặc Tailscale |
+| IDE | tuỳ chọn | IntelliJ Community · VS Code · Visual Studio Community — đều miễn phí |
+
+### 1. Máy chủ CSDL — tự dựng theo Phần F
+
+Phần này cố tình để **khái quát** — mỗi người tự tìm hiểu và làm theo checklist, vì đây chính là ~40% điểm và là thứ phải tự tay làm mới hiểu.
+
+Thứ tự việc:
+
+1. Cài SQL Server Developer trên từng máy, bật **Mixed Mode**, mở **TCP 1433**, collation `Vietnamese_CI_AS`
+2. Nối các máy bằng VPN, thêm entry vào `hosts` (replication lưu **tên máy**, không lưu IP)
+3. Bật **SQL Server Agent**, đặt `Automatic`, và xử lý tài khoản chạy Agent trong môi trường workgroup
+4. Tạo 4 database: `UIS_MASTER`, `UIS_HCM`, `UIS_HN`, `UIS_DN`
+5. Chạy script trong `db/` theo thứ tự số
+6. Tạo **Linked Server**, rồi **Publication** trên `UIS_MASTER` và các **Subscription**
+
+> 📖 Chi tiết từng bước, kèm cái bẫy ở mỗi bước: **Phần F** trong tài liệu thiết kế.
+> ✅ Bản tick nhanh để vừa làm vừa đánh dấu: **mục I5**.
+
+### 2. Backend — `apps/api` (Spring Boot)
+
+**Tạo project** tại [start.spring.io](https://start.spring.io) với: `Spring Web`, `JDBC API`, `Validation`, `Spring Security`, `Flyway Migration`.
+
+Thêm driver SQL Server và JWT vào `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>com.microsoft.sqlserver</groupId>
+  <artifactId>mssql-jdbc</artifactId>
+  <scope>runtime</scope>
+</dependency>
+<dependency>
+  <groupId>io.jsonwebtoken</groupId>
+  <artifactId>jjwt-api</artifactId>
+  <version>0.12.6</version>
+</dependency>
+```
+
+**Khai báo các site** — `application.yml`. Mỗi site một DataSource, mật khẩu lấy từ biến môi trường:
+
+```yaml
+uis:
+  sites:
+    MASTER:
+      url: "jdbc:sqlserver://SRV-HCM:1433;databaseName=UIS_MASTER;encrypt=true;trustServerCertificate=true"
+      username: uis_app
+      password: ${UIS_DB_PASSWORD}
+    HCM:
+      url: "jdbc:sqlserver://SRV-HCM:1433;databaseName=UIS_HCM;encrypt=true;trustServerCertificate=true"
+      username: uis_app
+      password: ${UIS_DB_PASSWORD}
+    HN:
+      url: "jdbc:sqlserver://SRV-HN:1433;databaseName=UIS_HN;encrypt=true;trustServerCertificate=true"
+      username: uis_app
+      password: ${UIS_DB_PASSWORD}
+    DN:
+      url: "jdbc:sqlserver://SRV-DN:1433;databaseName=UIS_DN;encrypt=true;trustServerCertificate=true"
+      username: uis_app
+      password: ${UIS_DB_PASSWORD}
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 3000        # site chết thì fail nhanh, không hút cạn thread pool
+      initialization-fail-timeout: -1 # ⚠️ BẮT BUỘC: app vẫn khởi động được khi một site đang tắt
+```
+
+⚠️ Hai dòng cuối không phải trang trí — thiếu chúng thì **ứng dụng không khởi động nổi khi một site tắt**, và kịch bản demo "tắt một site mà hệ thống vẫn chạy" (mục D6) sẽ hỏng ngay trước mặt giám khảo.
+
+**Định tuyến theo site** — đây là phần cốt lõi, hiện thân của Location Transparency:
+
+```java
+// Xác định site hiện tại của request (đọc từ JWT claim homeCampus)
+public final class SiteContext {
+    private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
+
+    public static void set(String maCoSo) { CURRENT.set(maCoSo); }
+    public static String get()            { return CURRENT.get(); }
+    public static void clear()            { CURRENT.remove(); }
+
+    /** Chạy một khối lệnh trên site chỉ định — dùng cho ghi liên cơ sở */
+    public static <T> T runAt(String maCoSo, Supplier<T> action) {
+        String truoc = CURRENT.get();
+        CURRENT.set(maCoSo);
+        try { return action.get(); } finally { CURRENT.set(truoc); }
+    }
+}
+
+// Spring tự chọn DataSource theo giá trị SiteContext
+public class SiteRoutingDataSource extends AbstractRoutingDataSource {
+    @Override protected Object determineCurrentLookupKey() {
+        return SiteContext.get();
+    }
+}
+```
+
+⚠️ **Một giao dịch không bao giờ được trải trên hai site.** `AbstractRoutingDataSource` phân giải khóa **một lần** khi lấy connection đầu tiên; đổi site giữa chừng trong `@Transactional` sẽ ghi nhầm site hoặc mất tính nguyên tử **mà không ném ra lỗi nào**. Ghép nhiều site bằng saga ở tầng ứng dụng (mục D3), không bằng transaction.
+
+**Chạy:**
+
+```bash
+cd apps/api
+./mvnw spring-boot:run          # http://localhost:8080
+```
+
+### 3. Frontend — `apps/web` (React + Vite)
+
+```bash
+npm create vite@latest web -- --template react-ts
+cd web && npm install
+```
+
+Trỏ API về backend — `vite.config.ts`:
+
+```ts
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: { "/api": "http://localhost:8080" }
+  }
+});
+```
+
+```bash
+npm run dev                     # http://localhost:5173
+```
+
+> ⚠️ **Giữ frontend tối giản.** Không shadcn/ui, không state library, không router phức tạp — chỉ `fetch` + `useState` + bảng và form. Barem chấm ở tầng CSDL; mỗi giờ dành cho UI là một giờ không dành cho replication đang gãy.
+
+### 4. Biến môi trường
+
+Tạo `apps/api/.env` (đã được `.gitignore` chặn — **không bao giờ commit**):
+
+```bash
+UIS_DB_PASSWORD=matkhau_cua_ban
+JWT_SECRET=chuoi_bi_mat_dai_it_nhat_32_ky_tu
+```
+
+Commit kèm một file `.env.example` chỉ có tên biến, không có giá trị, để người mới biết cần khai báo gì.
+
+---
+
 ## Trạng thái
 
 **Giai đoạn hiện tại:** thiết kế đã chốt, chưa bắt đầu cài đặt.
@@ -170,3 +324,204 @@ Việc còn treo — xem mục **I4**:
 | 8 | Báo cáo · slide · demo · tuần đệm | Bắt buộc |
 
 ⚠️ **Cổng chặn cuối tuần 4:** phần bắt buộc phải xong trước khi đụng vào phần mở rộng.
+
+---
+
+# Quy trình làm việc với Git
+
+> Mục này dành cho **mọi thành viên**. Đọc hết một lần trước khi commit dòng đầu tiên.
+
+## Cấu trúc nhánh
+
+Dự án dùng 3 tầng nhánh. Code đi từ dưới lên trên, **không bao giờ đi ngược lại**.
+
+```
+feature/ten-tinh-nang  ──PR──►  dev  ──PR (cuối mỗi tuần)──►  main
+```
+
+| Nhánh | Vai trò | Ai được đẩy code vào |
+|---|---|---|
+| `main` | Code luôn chạy ổn định, là bản đem đi demo/bảo vệ **bất cứ lúc nào**. Chỉ merge từ `dev` vào cuối mỗi mốc tuần | Không ai push thẳng. Chỉ merge PR từ `dev` |
+| `dev` | Nhánh tích hợp chung. Mọi thứ merge vào đây trước để các phần ghép với nhau và test chung | Không ai push thẳng. Chỉ merge PR từ `feature/*` |
+| `feature/<ten>` | Nhánh riêng của từng người cho từng task. Xong task thì mở PR vào `dev` rồi xoá nhánh | Người phụ trách task đó |
+
+Đặt tên nhánh theo module, chữ thường, nối bằng gạch ngang:
+
+```
+db/schema              db/trigger-role         db/replication
+db/linked-server       db/seed
+api/core               api/dang-ky             api/lien-co-so
+api/xray               web/sinh-vien           web/admin
+bench/benchmark        docs/phan-b             docs/phan-c
+```
+
+**Một nhánh = một task.** Đừng gom 3 việc vào một nhánh — PR sẽ to, khó review, và dễ conflict.
+
+## Quy tắc bắt buộc
+
+1. **Không push trực tiếp vào `main` và `dev`.** Repo đã bật branch protection nên bạn sẽ bị chặn tự động — thấy lỗi `protected branch hook declined` nghĩa là **bạn đang đứng nhầm nhánh**, không phải lỗi máy.
+2. **Mọi thay đổi phải đi qua Pull Request.** Không có ngoại lệ, kể cả sửa một dòng.
+3. **Tự test kỹ trên máy mình trước khi merge.** Chạy được, không lỗi, không làm hỏng phần người khác — trách nhiệm của người mở PR.
+4. **Không merge PR khi còn conflict.**
+
+### Mức duyệt khác nhau giữa hai nhánh
+
+| PR vào | Cần approval? | Ai merge |
+|---|---|---|
+| `dev` | **Không bắt buộc** | Tự merge sau khi đã test xong trên máy |
+| `main` (cuối tuần) | **Cần approval của owner** | Owner merge, sau khi cả nhóm đã test trên `dev` |
+
+Vào `dev` thì nhanh — mở PR rồi tự bấm merge, không phải chờ ai. Đổi lại **bạn chịu trách nhiệm hoàn toàn** cho việc code chạy được. PR ở đây tồn tại để cả nhóm nhìn thấy ai đổi gì, không phải để làm khó nhau.
+
+Còn `main` là bản đem đi bảo vệ, nên cuối mỗi mốc tuần mới gộp và phải có approval của owner. File `.github/CODEOWNERS` chỉ định owner duyệt cho toàn repo, nên approval của thành viên khác **không thay thế được**.
+
+### Cách review
+
+Mở PR → tab **Files changed** → nút **Review changes** (góc trên bên phải):
+
+| Lựa chọn | Ý nghĩa | Ảnh hưởng tới nút Merge |
+|---|---|---|
+| **Comment** | Góp ý, chưa kết luận | Không đổi gì |
+| **Approve** | Đồng ý cho merge | ✅ Bắt buộc với PR vào `main` |
+| **Request changes** | Yêu cầu sửa trước khi merge | ❌ **Khoá cứng PR** cho tới khi chính người đó approve lại |
+
+⚠️ **Cẩn thận với Request changes** — dùng nhầm là PR đứng hình, người khác approve cũng không cứu được. Góp ý bình thường thì chọn **Comment**.
+
+⚠️ **Approve bị gỡ nếu nhánh có commit mới.** Repo bật *dismiss stale reviews*, nên mỗi lần push thêm là approval cũ tự mất. Với PR vào `main`: sync và push xong xuôi **rồi mới** nhờ duyệt.
+
+Sau khi PR được merge, GitHub **tự xoá nhánh feature trên remote** — bạn chỉ cần dọn nhánh dưới máy mình.
+
+## Các bước làm việc hàng ngày
+
+```bash
+# 1. Trước khi bắt đầu, cập nhật dev mới nhất
+git checkout dev
+git pull origin dev
+
+# 2. Tạo nhánh riêng cho task đang làm
+git checkout -b db/trigger-role
+
+# 3. Code, commit theo từng phần nhỏ, rõ ràng
+git add .
+git commit -m "feat: them trigger chan ghi bang nhan ban o subscriber"
+
+# 4. Trước khi mở PR, cập nhật lại từ dev để giảm conflict
+git checkout dev
+git pull origin dev
+git checkout db/trigger-role
+git merge dev
+
+# 5. Push nhánh lên GitHub
+git push origin db/trigger-role
+
+# 6. Vào GitHub mở Pull Request từ nhánh này vào dev
+#    - Mô tả ngắn: task này làm gì, cách test thử
+#    - Chạy lại một lần nữa trên máy mình -> ok thì tự bấm Merge
+#    - Phần khó hoặc động vào db/ dùng chung: tag một người xem giúp trước
+```
+
+Sau khi PR được merge, dọn nhánh cũ:
+
+```bash
+git checkout dev
+git pull origin dev
+git fetch --prune                    # dọn tham chiếu tới nhánh đã bị xoá trên GitHub
+git branch -d db/trigger-role        # xoá nhánh ở máy mình
+```
+
+## Quy ước đặt tên commit
+
+Dùng Conventional Commits rút gọn: `<loại>: <mô tả ngắn gọn>`
+
+| Loại | Dùng khi | Ví dụ |
+|---|---|---|
+| `feat` | Thêm tính năng mới | `feat: them saga dang ky lien co so` |
+| `fix` | Sửa lỗi | `fix: sua bo dem si so nhay 2 moi lan dang ky` |
+| `docs` | Sửa tài liệu/README | `docs: bo sung bang tan suat truy cap` |
+| `db` | Schema, trigger, script SQL | `db: them rang buoc check suc chua lop` |
+| `refactor` | Sửa code không đổi chức năng | `refactor: tach routing datasource ra rieng` |
+| `test` | Thêm/sửa test | `test: them test 100 luong tranh 30 cho` |
+| `chore` | Việc lặt vặt, cấu hình | `chore: them flyway vao apps/api` |
+
+Mô tả viết ở thì hiện tại, nói việc đã làm, dưới 72 ký tự, không viết hoa đầu câu, không chấm cuối câu:
+
+```
+❌  update  ·  fix bug  ·  sua lai code
+✅  feat: them bo loc lop hoc phan theo hoc ky
+```
+
+## Xử lý conflict
+
+Conflict xảy ra khi hai người cùng sửa một chỗ trong một file. Chuyện bình thường, không phải ai làm sai.
+
+> **Nguyên tắc: người tạo ra conflict tự resolve trên máy mình, test lại rồi mới push.** Đừng đẩy conflict sang cho người review.
+
+Khi `git merge dev` ở bước 4 báo conflict:
+
+```bash
+git status                     # xem file nào đang conflict
+# Mở từng file, tìm dấu <<<<<<<  =======  >>>>>>>
+# Giữ lại phần đúng, xoá hết dấu phân cách
+git add <file-da-sua>
+git commit                     # hoàn tất merge
+# CHẠY LẠI + TEST trước khi push
+```
+
+Rối quá thì quay lại trạng thái trước khi merge:
+
+```bash
+git merge --abort
+```
+
+### ⚠️ Ba chỗ dễ conflict nhất của dự án này
+
+**1. `docs/UISPTITv2-Thiet-Ke-v2.md` — nguy hiểm nhất.**
+Đây là tài liệu duy nhất, gần 1.900 dòng, và **cả 5 người đều viết báo cáo từ nó**. Cách tránh:
+
+- **Chia theo mục, không chia theo file.** Mỗi người chỉ sửa mục được phân công (người làm Phần B không đụng Phần C)
+- Nhánh tài liệu phải **ngắn ngày** — sửa xong mục nào merge ngay, đừng ôm một tuần
+- `git pull origin dev` **ngay trước khi** bắt đầu sửa, không phải lúc chuẩn bị push
+
+**2. `db/02-schema-site.sql` và các script trong `db/`.**
+Cả nhóm đều động vào. Nếu cần đổi schema, **báo nhóm trước trong group chat** rồi mới sửa. Một người sửa xong và merge vào `dev`, những người khác chạy:
+
+```bash
+git pull origin dev
+# rồi chạy lại script db/ trên CSDL local của mình
+# (hoặc: mvn -f apps/api flyway:migrate  khi đã có Flyway)
+```
+
+**3. `docs/screenshots/` — ảnh không merge được.**
+File nhị phân, git không gộp được, và hai người chụp cùng một bước sẽ đè lên nhau. Quy ước đặt tên:
+
+```
+docs/screenshots/05-publication/05-01-chon-publisher.png
+docs/screenshots/05-publication/05-02-chon-article.png
+```
+
+Đánh số theo **bước**, không theo người. Trước khi chụp, xem thư mục đã có ảnh bước đó chưa.
+
+## Phân công nhánh theo module
+
+| Nhánh | Module | Người phụ trách |
+|---|---|---|
+| `db/schema` | Schema, ràng buộc, khóa | *(điền tên)* |
+| `db/trigger-role` | Trigger toàn vẹn site, database role, phân quyền | *(điền tên)* |
+| `db/replication` | Publication, subscription, retention | *(điền tên)* |
+| `db/linked-server` | Linked Server, 4 báo cáo tổng hợp | *(điền tên)* |
+| `db/seed` | Sinh dữ liệu lớn | *(điền tên)* |
+| `api/core` | SiteContext, routing datasource, 3 port | *(điền tên)* |
+| `api/dang-ky` | Đăng ký học phần, chống overbooking | *(điền tên)* |
+| `api/lien-co-so` | Saga, outbox, projection | *(điền tên)* |
+| `api/xray` | X-Ray Phân Tán | *(điền tên)* |
+| `web/*` | Giao diện | *(điền tên)* |
+| `bench/benchmark` | Sinh tải, đo đạc | *(điền tên)* |
+| `docs/*` | Tài liệu, báo cáo, sơ đồ | *(điền tên)* |
+
+Nhận task nào thì điền tên vào đó để tránh hai người làm trùng.
+
+---
+
+# Giấy phép
+
+MIT — dự án học tập, dùng lại thoải mái.
