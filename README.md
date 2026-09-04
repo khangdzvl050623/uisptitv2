@@ -25,7 +25,7 @@ Một trường có nhiều cơ sở đào tạo đặt tại các tỉnh/thành
               │  UIS_MASTER — VAI TRÒ MASTER             │
               │  Publisher · Distributor                 │
               │  CoSo · Khoa · CTDT · MonHoc · HocKy     │
-              │  DanhBaSinhVien                          │
+              │  DanhBaNguoiDung                          │
               └────┬──────────────┬──────────────┬───────┘
                    │              │              │
           Transactional Replication một chiều (~vài giây)
@@ -84,7 +84,7 @@ Benchmark **B5** đo cả hai trên cùng một nghiệp vụ để chứng minh
 |---|---|
 | **Phân mảnh ngang** | `SinhVien`, `GiangVien`, `TaiKhoan`, `DotDangKy`, `LopHocPhan` |
 | **Phân mảnh ngang dẫn xuất** | `DangKyHocPhan` (bậc 1, `⋉ LopHocPhan`) · `Diem` (bậc 2) |
-| **Nhân bản một chiều** | Danh mục dùng chung + **danh bạ định vị** `DanhBaSinhVien` |
+| **Nhân bản một chiều** | Danh mục dùng chung + **danh bạ định vị** `DanhBaNguoiDung` |
 | **Giao dịch phân tán (2PC / MS DTC)** | **Chuyển cơ sở sinh viên** — nguyên tử trên 3 CSDL |
 | **Linked Server** | Chỉ cho thống kê toàn hệ thống — `OPENQUERY` / `EXEC … AT` |
 | **Tối ưu truy vấn phân tán** | Aggregate pushdown / semi-join, có benchmark đo bằng số liệu |
@@ -160,7 +160,7 @@ Toàn bộ thiết kế nằm trong **một tài liệu duy nhất**: [`docs/UIS
 |---|---|
 | CSDL | **SQL Server Developer Edition** — bắt buộc. Express không làm được Publisher và không có SQL Server Agent |
 | Máy | 2–4 máy Windows 10/11 · 8GB RAM · 20GB đĩa trống |
-| Mạng | Radmin VPN (hoặc Tailscale) |
+| Mạng | Radmin VPN (hoặc Tailscale) — **chỉ nối các máy chủ**, thiết bị người dùng không tham gia |
 | Backend | JDK 17+ · Maven |
 | Frontend | Node 20+ |
 | **Chi phí hạ tầng** | **0đ** — chạy hoàn toàn trên máy của nhóm |
@@ -319,6 +319,18 @@ Sinh viên (bất kỳ đâu)  ──HTTPS──►  Tầng API  ──VPN──
                                     (công khai)          (luôn kín)
 ```
 
+**Năm loại kết nối trong hệ thống:**
+
+| Kết nối | Giao thức · cổng | Mục đích |
+|---|---|---|
+| Người dùng → API | HTTPS 443 | Mọi nghiệp vụ |
+| API → CSDL | JDBC/TDS 1433 qua VPN | Đọc/ghi nghiệp vụ |
+| Master → Subscriber | Replication qua VPN | Đồng bộ danh mục + danh bạ |
+| Reporting Node → site | Linked Server qua VPN | **Chỉ** báo cáo Admin |
+| Site ↔ Site | **MS DTC — TCP 135 + RPC động** | **Giao dịch phân tán** (chuyển cơ sở) |
+
+⚠️ **Thiết bị người dùng không tham gia VPN.** Chỉ máy chủ nối VPN với nhau; người dùng chỉ thấy một URL HTTPS.
+
 | Tình huống | Cách | Địa chỉ |
 |---|---|---|
 | Demo trong phòng, cùng wifi | Mở firewall cổng 8080 trên máy chạy API | `http://192.168.x.x:8080` |
@@ -334,7 +346,7 @@ Một lệnh là có URL HTTPS công khai — không cần IP tĩnh, không mở
 **Ba cái bẫy khi chạy nhiều máy:**
 
 1. **Vite chỉ nghe `127.0.0.1`** → máy khác không vào được frontend. Đặt `server: { host: true }`, và proxy phải trỏ về **IP máy chạy API**, không phải `localhost`
-2. **Windows Firewall chặn cổng 8080.** Spring Boot đã nghe mọi interface nhưng kết nối vào bị chặn:
+2. **Windows Firewall chặn cổng 8080** — chỉ khi truy cập qua **LAN hoặc VPN**. ⚠️ Dùng Cloudflare Tunnel trên cùng máy thì **không cần** lệnh này, vì `cloudflared` gọi `localhost`:
    ```powershell
    New-NetFirewallRule -DisplayName "UIS API 8080" -Direction Inbound `
      -Protocol TCP -LocalPort 8080 -Action Allow
@@ -343,7 +355,7 @@ Một lệnh là có URL HTTPS công khai — không cần IP tĩnh, không mở
 
 > ⭐ **Khuyến nghị cho demo: gộp frontend vào backend.** `npm run build` rồi chép `dist/*` vào `apps/api/src/main/resources/static/`. Một server, một cổng, một URL — không CORS, không proxy, không phải chạy hai tiến trình.
 
-⚠️ Nếu mở ra internet: mật khẩu CSDL mạnh, `.env` không bao giờ commit (repo đang công khai), không để lộ Swagger/Actuator, và chỉ bật tunnel khi cần demo.
+⚠️ **Nếu mở ra internet:** mật khẩu CSDL mạnh · `.env` không bao giờ commit (repo đang công khai) · không để lộ Swagger/Actuator · **cổng 1433 chỉ mở trên interface VPN, không bao giờ forward trên modem** · tunnel chỉ bật lúc demo, **không phải cổng vào production** (URL ngẫu nhiên, không WAF, không rate-limit).
 
 ### 5. Biến môi trường
 
