@@ -9,12 +9,14 @@
 
 | Bạn đang cần… | Đọc mục |
 |---|---|
+| ⭐ **Biết đâu là phần KHÔNG ĐƯỢC PHÉP THIẾU** | **0.1b — năm yêu cầu bắt buộc của giảng viên** |
 | Nắm nhanh dự án trong 5 phút | **0.1** bảng quyết định · **0.2** điểm đặc biệt · **C0** hai chế độ ghi |
 | Viết mục 2.1 báo cáo (Đặt vấn đề) | **Phần A** |
 | Viết mục 2.2.1 báo cáo (Phân tích) | **Phần B** — đặc biệt **B2** bảng tần suất và **B3** ma trận phân quyền |
 | Viết mục 2.2.2 báo cáo (Thiết kế) | **Phần C** — C1 bảng · C2 ownership · C3 phân mảnh · C4 ánh xạ · C5 định vị · C6 kiến trúc |
 | Làm cài đặt vật lý (mục 3 đề bài) | **Phần F** chi tiết · **I5** checklist tick nhanh |
-| Hiểu cơ chế phân tán để trả lời câu hỏi | **Phần D** |
+| Hiểu cơ chế phân tán để trả lời câu hỏi | **Phần D** — riêng giao dịch phân tán xem **D8** |
+| Cho sinh viên gọi API từ máy khác / qua internet | **C7b** |
 | Làm phần X-Ray | **0.2** và **Phần E** |
 | Đo đạc, benchmark, test | **Phần G** |
 | Xem lịch, phân vai | **Phần H** |
@@ -26,13 +28,13 @@
 
 | Phần | Nội dung |
 |---|---|
-| **0** | Cách đọc · **0.1** Bảng quyết định (D1–D15) · **0.2** ⭐ X-Ray Phân Tán |
+| **0** | Cách đọc · **0.1** Bảng quyết định (D1–D16) · **0.1b ⭐ NĂM YÊU CẦU BẮT BUỘC** · **0.2** ⭐ X-Ray Phân Tán |
 | **A** — Đặt vấn đề | A1 nhu cầu · A2 vì sao phân tán · A3 vị trí & dữ liệu · A4 đối tượng sử dụng |
 | **B** — Phân tích | B1 chức năng · **B2 bảng tần suất** · B3 ma trận phân quyền · B4 chức năng từng vị trí · B5 máy trạm/máy chủ · B6 ERD |
-| **C** — Thiết kế | **C0 hai chế độ ghi** · C1 CSDL quan hệ · C2 ownership · C3 lược đồ phân mảnh · C4 lược đồ ánh xạ · C5 sơ đồ định vị · C6 Client/Server · C7 front/back-end · C8 abstraction boundary · C9 chiến lược ID · C10 read model & Outbox · C11 nền tảng vận hành |
-| **D** — Cơ chế phân tán | D1 nhân bản · D2 Linked Server & tối ưu · D3 saga liên cơ sở · D4 giao dịch & tương tranh · D5 trigger & phân quyền · D6 xử lý sự cố · D7 các mức trong suốt |
+| **C** — Thiết kế | **C0 hai chế độ ghi** · C1 CSDL quan hệ · C2 ownership · C3 lược đồ phân mảnh · C4 lược đồ ánh xạ · C5 sơ đồ định vị · C6 Client/Server · C7 front/back-end · **C7b truy cập mạng** · C8 abstraction boundary · C9 chiến lược ID · C10 read model & Outbox · C11 nền tảng vận hành |
+| **D** — Cơ chế phân tán | D1 nhân bản · D2 Linked Server & tối ưu · D3 saga liên cơ sở · D4 giao dịch & tương tranh · **D8 ⭐ GIAO DỊCH PHÂN TÁN (2PC)** · D5 trigger & phân quyền · D6 xử lý sự cố · D7 các mức trong suốt |
 | **E** — ⭐ X-Ray | E1 vấn đề · E2 thiết kế · E3 ba chế độ · E4 giới hạn phạm vi |
-| **F** — Cài đặt vật lý | F1 VPN · F2 link mạng · F3 SQL Server · F4 Agent · F5 Linked Server · F6 Publication · F7 thử giao tác |
+| **F** — Cài đặt vật lý | F1 VPN · F2 link mạng · F3 SQL Server · F4 Agent · **F4b ⭐ MS DTC** · F5 Linked Server · F6 Publication · F7 thử giao tác |
 | **G** — Kiểm thử & đo đạc | G1 seed · G2 benchmark · G3 tương tranh · G4 sự cố · G5 2PC vs saga · G6 phân mảnh dọc · G7 deadlock |
 | **H** — Lộ trình | 8 tuần + phân vai 5 người |
 | **I** — Phụ lục | I1 repo · I2 plan B · I2b vận hành máy chủ · I3 rủi ro · I4 việc còn treo · **I5 checklist tick nhanh** · **I6 danh sách bảng** · I7 nguồn tham khảo |
@@ -62,7 +64,8 @@
 | **D14** | **Tách Master khỏi CSDL vận hành** | ✅ **Có.** `UIS_MASTER` là Publisher; cả ba CSDL vận hành (`UIS_HCM`, `UIS_HN`, `UIS_DN`) đều là Subscriber → topology **đối xứng hoàn toàn** |
 | **D15** | **Master colocate hay chạy máy riêng** | ⏳ **Quyết ở tuần 3 theo số máy thật.** 3 máy → colocate trên SRV-HCM · 4 máy → nút `SRV-MASTER` riêng. **Kiến trúc logic không đổi trong cả hai trường hợp** (xem C0) |
 | D3 | Chủ sở hữu `DangKyHocPhan` | ✅ **Host Campus** (cơ sở mở lớp) |
-| D4 | Distributed transaction / 2PC | ✅ Không dùng làm luồng chính; chỉ làm **thí nghiệm đối chứng có đo số** (G5) |
+| **D4** | **Distributed transaction / 2PC** | ✅ **BẮT BUỘC có một luồng** — đặt tại **chuyển cơ sở sinh viên** (D8). Không đặt vào đăng ký học phần vì đó là đường nóng có tranh chấp |
+| **D16** | **Truy cập mạng** | ✅ **CSDL kín trong VPN · chỉ tầng API mở công khai** qua tunnel miễn phí — đúng hình dạng hệ thống thật (C7b) |
 | D5 | Saga đồng bộ hay bất đồng bộ | ✅ Thử đồng bộ; timeout thì rơi về `CHO_DUYET` |
 | D6 | Truy cập dữ liệu | ✅ **JdbcTemplate** cho đăng ký, cross-site và benchmark |
 | **D7** | **Phân giải cơ sở của sinh viên** | ✅ **`DanhBaSinhVien` — danh bạ toàn cục nhân bản từ Master.** Mã SV *không* mã hóa cơ sở |
@@ -79,6 +82,42 @@
 | — | Linked Server topology | ✅ **Hình sao từ SRV-HCM**, N−1 định nghĩa; báo cáo chạy trong ngữ cảnh `UIS_HCM` |
 
 🔶 **Giả định đang dùng, cần xác nhận:** quy mô 8.000 SV HCM / 5.000 HN / 3.000 ĐN · 6 học phần mỗi kỳ · đợt đăng ký dồn 3 ngày · 2% sinh viên học liên cơ sở · tài liệu Replication của giảng viên hướng dẫn theo wizard SSMS.
+
+---
+
+## 0.1b ⭐ NĂM YÊU CẦU BẮT BUỘC CỦA GIẢNG VIÊN
+
+> **Đây là danh sách phải-có. Thiếu một mục là mất điểm nặng.** Mọi thứ khác trong tài liệu này đều là phần thêm; năm dòng dưới đây là phần không được phép thiếu.
+
+| # | Yêu cầu | Hiện thực ở đâu | Chứng minh bằng | Trạng thái |
+|---|---|---|---|---|
+| 1 | **1 phương pháp phân mảnh** | **Phân mảnh ngang** theo cơ sở — `SinhVien`, `GiangVien`, `TaiKhoan`, `DotDangKy`, `LopHocPhan` (C3) *(có thêm dẫn xuất bậc 1 và bậc 2 — phần dư)* | F7b-1, F7b-2 | ✅ |
+| 2 | **1 phương pháp replication** | **Transactional Replication** một chiều `UIS_MASTER` → mọi Subscriber (D1) | F7b-3, F7b-4 | ✅ |
+| 3 | **1 distributed transaction** | **2PC / MS DTC cho nghiệp vụ chuyển cơ sở sinh viên** (D8) — ba CSDL trong một giao dịch nguyên tử | F7e | ⚠️ **PHẢI LÀM** |
+| 4 | **1 tình huống concurrency** | **100 luồng tranh 30 chỗ** khi đăng ký học phần — `UPDATE` có điều kiện + 4 lớp ràng buộc (D4) | G3 | ✅ |
+| 5 | **1 distributed query** | **`OPENQUERY` thống kê toàn hệ thống** qua Linked Server (D2) | F7c, B1 | ✅ |
+
+### ⚠️ Yêu cầu 3 làm thay đổi thiết kế, không phải bổ sung nhỏ
+
+Bản trước cố tình **tránh** 2PC, thay bằng saga. Nay 2PC là bắt buộc, nên thiết kế có **cả hai**, dùng đúng chỗ:
+
+| | **Chuyển cơ sở sinh viên** | **Đăng ký liên cơ sở** |
+|---|---|---|
+| Cơ chế | **Distributed transaction (2PC)** | **Saga + idempotent receiver** |
+| Tần suất | Rất hiếm — vài lần mỗi kỳ | 32.000 lượt/ngày cao điểm |
+| Tranh chấp | Không — mỗi sinh viên một dòng riêng | Cao — hàng trăm người tranh một dòng lớp |
+| Cần nguyên tử tuyệt đối? | **Có.** Không tồn tại trạng thái trung gian an toàn: sinh viên không thể "nửa ở HCM nửa ở HN" | Không — trạng thái `CHO_DUYET` là trung gian an toàn |
+| Giữ lock qua mạng | Không đáng kể | Thảm hoạ cho thông lượng |
+
+> ⭐ **Đây là điểm mạnh, không phải điểm vá.** Trả lời được *"vì sao chỗ này dùng 2PC mà chỗ kia không"* — kèm số đo ở **B5** — mạnh hơn nhiều so với chỉ cài một trong hai. Đó là câu trả lời thể hiện **phán đoán thiết kế**, không chỉ là kỹ năng cài đặt.
+
+### Cặp đối chiếu thứ hai — cùng ghi hai nơi, khác cách xử lý
+
+| | **Tạo sinh viên mới** | **Chuyển cơ sở** |
+|---|---|---|
+| Cũng ghi 2–3 CSDL | Có | Có |
+| Cơ chế | **Outbox + eventual consistency** | **2PC** |
+| Vì sao khác | Có **trạng thái trung gian an toàn**: `TrangThai = 'CHO_KICH_HOAT'` khiến sinh viên chưa đăng nhập được, nên chờ vài giây là chấp nhận được | **Không có** trạng thái trung gian an toàn nào |
 
 ---
 
@@ -219,6 +258,7 @@ Hệ thống có **ba cơ sở vận hành** cộng **một vai trò Master** t�
 | 10 | Duyệt lớp mở tại cơ sở khác ➕ | SV | `LopHocPhan` tại site kia | **Cross-site**, đọc trực tiếp qua DataSource |
 | 11 | Đăng ký lớp liên cơ sở ➕ | SV | `YeuCauHocLienCoSo` (Home) + `LopHocPhan`,`DangKyHocPhan` (Host) | Saga · 2 giao dịch cục bộ |
 | 12 | Đồng bộ điểm về cơ sở nhà ➕ | Hệ thống | `OutboxSuKien` (Host) → `BangDiemMirror` (Home) | Nền · bất đồng bộ |
+| **13** | **Chuyển cơ sở sinh viên** ⭐ | Admin Master | `SinhVien`, `TaiKhoan` (2 site) + `DanhBaSinhVien` (Master) | **GIAO DỊCH PHÂN TÁN (2PC)** — nguyên tử trên 3 CSDL |
 
 ## B2. **Bảng tần suất truy cập tại các vị trí**
 
@@ -278,6 +318,7 @@ Hệ thống có **ba cơ sở vận hành** cộng **một vai trò Master** t�
 | `YeuCauHocLienCoSo` ➕ | R (L: chính mình) · W qua chức năng | — | R (L: cơ sở mình) | R |
 | `BangDiemMirror` ➕ | R (L: chính mình) | — | R | R |
 | `OutboxSuKien` ➕ | — | — | — | R |
+| **Chuyển cơ sở sinh viên** ⭐ | — | — | — | **Chỉ Admin Master** — thao tác duy nhất dùng giao dịch phân tán |
 
 ### **D13 — Ba lớp phân quyền, mỗi lớp một trách nhiệm**
 
@@ -608,21 +649,21 @@ Bất biến: **sinh viên chỉ đăng nhập được khi `TrangThai = 'HOAT_D
 
 Vì `DangKyHocPhan` và `Diem` phân mảnh theo **Host** chứ không theo sinh viên, **dữ liệu gốc về đăng ký và điểm không phải di chuyển** — chúng vốn đã nằm đúng chỗ theo lớp đã học, và về mặt nghiệp vụ chúng *phải* ở lại đó (đó là lịch sử học tập tại cơ sở cũ).
 
-**Nhưng vẫn phải di trú toàn bộ trạng thái do Home sở hữu, và dựng lại projection:**
+**Nhưng vẫn phải di trú toàn bộ trạng thái do Home sở hữu.** Và vì **không tồn tại trạng thái trung gian an toàn** — sinh viên không thể "nửa ở HCM nửa ở HN" — nghiệp vụ này là nơi **bắt buộc dùng distributed transaction** (yêu cầu 3 của giảng viên).
 
-| Việc | Loại | Ở đâu |
+Chia làm ba giai đoạn, và **chỉ giai đoạn 2 nằm trong giao dịch phân tán**:
+
+| Giai đoạn | Việc | Trong 2PC? |
 |---|---|---|
-| `DanhBaSinhVien.MaCoSoNha` | Cập nhật | `UIS_MASTER` → nhân bản ra mọi site |
-| Hồ sơ `SinhVien` | **Di trú** | Cơ sở cũ → cơ sở mới |
-| `TaiKhoan` | **Di trú** | Cơ sở cũ → cơ sở mới |
-| `YeuCauHocLienCoSo` | **Di trú** — đây là trạng thái do Home sở hữu | Cơ sở cũ → cơ sở mới |
-| Sự kiện `OutboxSuKien` còn `PENDING` liên quan sinh viên đó | **Phải xả hết trước khi chuyển** | Cơ sở cũ |
-| `BangDiemMirror` | **Dựng lại** từ `Diem` ở các Host | Cơ sở mới |
-| `SinhVien.SoMonLienCoSo` | Tính lại | Cơ sở mới |
+| **1. Tiền điều kiện** | Không còn `YeuCauHocLienCoSo` ở trạng thái `CHO_DUYET` · `OutboxSuKien` của SV đã xả hết · không đang trong đợt đăng ký | ❌ kiểm tra trước |
+| **2. Giao dịch phân tán** | Xoá `SinhVien` + `TaiKhoan` ở cơ sở cũ · chèn ở cơ sở mới · cập nhật `DanhBaSinhVien` tại Master | ✅ **nguyên tử trên 3 CSDL** |
+| **3. Hậu xử lý** | Dựng lại `BangDiemMirror` từ `Diem` ở các Host · tính lại `SoMonLienCoSo` · chuyển `YeuCauHocLienCoSo` lịch sử | ❌ idempotent, chạy sau |
 
-> Nếu trước đó chọn phân mảnh `DangKyHocPhan` theo `SinhVien`, chuyển cơ sở sẽ phải **di trú cả lịch sử đăng ký và điểm** — khối lượng lớn nhất trong hệ thống, và còn phá vỡ ngữ nghĩa "điểm thuộc về nơi dạy". Với vị từ theo `LopHocPhan`, phạm vi di trú **bị giới hạn trong trạng thái do Home sở hữu** — vẫn là một thủ tục thật, nhưng bị chặn trên và không đụng tới phần dữ liệu lớn nhất. Đáng nêu trong báo cáo như hệ quả tích cực của quyết định ở C3.
+> ⚠️ **Giữ giao dịch phân tán càng ngắn càng tốt** — đúng 5 câu lệnh. Nhét cả bước dựng lại projection vào trong đó là giữ lock trên ba site lâu không cần thiết.
 
-**Phạm vi:** chuyển cơ sở là **thủ tục quản trị có kiểm soát**, không phải chức năng tự động — script có kiểm tra trước/sau, chạy ngoài đợt đăng ký, sau khi đã xả hết Outbox. Không tự động hóa trong phạm vi đồ án.
+Chi tiết thủ tục, mã T-SQL và cấu hình MS DTC: **mục D8**.
+
+> Nếu trước đó chọn phân mảnh `DangKyHocPhan` theo `SinhVien`, chuyển cơ sở sẽ phải **di trú cả lịch sử đăng ký và điểm** — khối lượng lớn nhất trong hệ thống, và còn phá vỡ ngữ nghĩa "điểm thuộc về nơi dạy". Với vị từ theo `LopHocPhan`, phạm vi giao dịch phân tán **thu về đúng ba bảng nhỏ**. Đây là điều làm cho 2PC ở đây trở nên khả thi và rẻ — đáng nêu trong báo cáo như hệ quả tích cực của quyết định ở C3.
 
 ## C3. **Lược đồ phân mảnh**
 
@@ -799,6 +840,60 @@ Máy chủ ứng dụng ── (định tuyến local-first) ──► CSDL cơ 
 ```
 
 > `DS_MASTER` **không** tham gia vào bất kỳ đường đọc nào của sinh viên/giảng viên. Mọi thao tác đọc danh mục đều đi vào bản sao trong CSDL vận hành của site đó — đó chính là Replication Transparency.
+
+## C7b. Truy cập mạng — CSDL kín, API mở
+
+Một hệ thống UIS thật thì sinh viên gọi API qua HTTPS từ bất kỳ đâu. Nhưng **CSDL của nó không bao giờ mở ra internet** — nó nằm trong mạng nội bộ của trường. Kiến trúc thật là:
+
+```
+Sinh viên (bất kỳ đâu, bất kỳ máy nào)
+      │ HTTPS công khai
+      ▼
+┌──────────────────┐
+│  Tầng API / Web  │   ← CÔNG KHAI
+└────────┬─────────┘
+         │ mạng nội bộ   ← KHÔNG BAO GIỜ công khai
+         ▼
+   CSDL các cơ sở
+```
+
+> **VPN trong dự án này chính là "mạng nội bộ" đó.** Nên phần VPN không phải chỗ thiếu sót — nó đang mô phỏng đúng. Thứ cần thêm chỉ là **lối vào công khai cho tầng API**.
+
+### Ba mức truy cập, tuỳ tình huống
+
+| Tình huống | Cách | Địa chỉ |
+|---|---|---|
+| Demo trong phòng, các máy cùng wifi | Máy chạy API mở firewall cổng 8080 | `http://192.168.x.x:8080` |
+| Nhóm làm việc ở nhà, khác địa điểm | Mọi người vào cùng mạng VPN | `http://26.x.x.x:8080` |
+| **Truy cập từ bất kỳ đâu qua internet** | **Tunnel miễn phí trên máy chạy API** | `https://<tên>.trycloudflare.com` |
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+Một lệnh, có ngay URL HTTPS công khai. Không cần IP tĩnh, không mở port trên router, không tốn tiền. Máy chạy API vẫn ở trong VPN để với tới các CSDL — **kết quả là CSDL vẫn kín, chỉ API công khai**, đúng hình dạng hệ thống thật.
+
+*(Thay thế: Tailscale Funnel nếu dùng Tailscale làm VPN; ngrok bản miễn phí có trang cảnh báo chen giữa.)*
+
+### Ba cái bẫy khi chạy nhiều máy
+
+| # | Bẫy | Cách xử lý |
+|---|---|---|
+| 1 | **Vite chỉ nghe `127.0.0.1`** → máy khác không vào được frontend | `server: { host: true }` và proxy trỏ về **IP máy chạy API**, không phải `localhost` |
+| 2 | **Windows Firewall chặn cổng 8080** — Spring Boot đã nghe mọi interface nhưng kết nối vào bị chặn | `New-NetFirewallRule -DisplayName "UIS API 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow` |
+| 3 | **CORS** khi trình duyệt gọi thẳng API khác origin | Không phát sinh nếu gộp frontend vào backend, hoặc đi qua proxy Vite |
+
+> ⭐ **Khuyến nghị cho demo: gộp frontend vào backend.** `npm run build` rồi chép `dist/*` vào `apps/api/src/main/resources/static/`. Một server, một cổng, một URL — không CORS, không proxy, không phải chạy hai tiến trình. Lúc bảo vệ là phương án ít thứ hỏng nhất.
+
+### Nếu mở ra internet thì phải làm ba việc
+
+1. **Mật khẩu CSDL mạnh, `.env` không bao giờ commit** — repo đang công khai
+2. **Không để lộ endpoint quản trị** — chặn Swagger UI và Spring Actuator ra ngoài
+3. **Chỉ bật tunnel khi cần demo**, tắt lúc không dùng
+
+⚠️ Đây vẫn là phần ➕ — không ảnh hưởng tới bất kỳ mục nào trong năm yêu cầu bắt buộc.
+
+---
 
 ## C8. Abstraction boundary — **3 port, không hơn** ➕
 
@@ -1202,6 +1297,130 @@ SV cơ sở HCM  →  đăng ký lớp của HN  →  giao dịch cục bộ T�
 
 Không có gì biến nó thành giao dịch phân tán, vì **toàn bộ dữ liệu cần cho ràng buộc (bộ đếm + đăng ký) đều nằm tại HN**. Home chỉ giữ bản ghi yêu cầu, và bản ghi đó không tham gia vào ràng buộc sức chứa. Đây là phần thưởng của lựa chọn ownership ở C2.
 
+## D8. **Giao dịch phân tán (2PC) — chuyển cơ sở sinh viên**
+
+> ⭐ **Đây là yêu cầu số 3 trong năm yêu cầu bắt buộc của giảng viên** (mục 0.1b).
+
+### Vì sao đặt ở đây, không đặt ở đăng ký học phần
+
+| Tiêu chí | **Chuyển cơ sở** ✅ | **Đăng ký học phần** ❌ |
+|---|---|---|
+| Tần suất | Vài lần mỗi kỳ | 32.000 lượt/ngày cao điểm |
+| Tranh chấp | Không — mỗi sinh viên một dòng riêng | Cao — hàng trăm người tranh một dòng lớp |
+| Trạng thái trung gian an toàn | **Không có.** Sinh viên không thể "nửa ở HCM nửa ở HN" | Có — `CHO_DUYET` |
+| Chi phí giữ lock qua mạng | Không đáng kể | Sụp thông lượng |
+| Số CSDL tham gia | **3** — cơ sở cũ, cơ sở mới, Master | 2 |
+
+2PC là **blocking protocol**: nếu coordinator chết sau giai đoạn `prepare`, resource manager giữ lock tới khi có người can thiệp. Cái giá đó chấp nhận được cho một thao tác hiếm và không tranh chấp — **không** chấp nhận được cho đường nóng.
+
+### Thủ tục
+
+```sql
+CREATE OR ALTER PROCEDURE sp_ChuyenCoSoSinhVien
+    @MaSinhVien  VARCHAR(20),
+    @CoSoMoi     VARCHAR(10)
+AS
+BEGIN
+    SET XACT_ABORT ON;        -- ⚠️ BẮT BUỘC với giao dịch phân tán:
+                              -- lỗi bất kỳ ở site nào cũng phải rollback toàn bộ
+    SET NOCOUNT ON;
+
+    ---- GIAI ĐOẠN 1 — TIỀN ĐIỀU KIỆN (ngoài giao dịch) --------------------
+    IF EXISTS (SELECT 1 FROM YeuCauHocLienCoSo
+                WHERE MaSinhVien = @MaSinhVien AND TrangThai = 'CHO_DUYET')
+        THROW 51001, N'Còn yêu cầu liên cơ sở chưa xử lý xong', 1;
+
+    IF EXISTS (SELECT 1 FROM OutboxSuKien
+                WHERE KhoaThucThe = @MaSinhVien AND TrangThai = 'PENDING')
+        THROW 51002, N'Còn sự kiện Outbox chưa gửi', 1;
+
+    ---- GIAI ĐOẠN 2 — GIAO DỊCH PHÂN TÁN (nguyên tử trên 3 CSDL) ----------
+    BEGIN DISTRIBUTED TRANSACTION;
+
+        -- (a) đọc hồ sơ ở cơ sở cũ
+        DECLARE @HoTen NVARCHAR(100), @NgaySinh DATE, @MaCTDT VARCHAR(20);
+        SELECT @HoTen = HoTen, @NgaySinh = NgaySinh, @MaCTDT = MaCTDT
+          FROM UIS_HCM.dbo.SinhVien WHERE MaSinhVien = @MaSinhVien;
+
+        -- (b) chèn sang cơ sở mới  (QUA LINKED SERVER)
+        INSERT INTO SRV_HN.UIS_HN.dbo.SinhVien
+               (MaSinhVien, HoTen, NgaySinh, MaCoSoNha, MaCTDT, TrangThai)
+        VALUES (@MaSinhVien, @HoTen, @NgaySinh, @CoSoMoi, @MaCTDT, 'HOAT_DONG');
+
+        INSERT INTO SRV_HN.UIS_HN.dbo.TaiKhoan
+        SELECT TenDangNhap, MatKhauHash, VaiTro, MaThucThe, @CoSoMoi
+          FROM UIS_HCM.dbo.TaiKhoan WHERE MaThucThe = @MaSinhVien;
+
+        -- (c) xoá khỏi cơ sở cũ
+        DELETE FROM UIS_HCM.dbo.TaiKhoan  WHERE MaThucThe  = @MaSinhVien;
+        DELETE FROM UIS_HCM.dbo.SinhVien  WHERE MaSinhVien = @MaSinhVien;
+
+        -- (d) cập nhật danh bạ định vị tại Master
+        UPDATE UIS_MASTER.dbo.DanhBaSinhVien
+           SET MaCoSoNha = @CoSoMoi, NgayCapNhat = SYSUTCDATETIME()
+         WHERE MaSinhVien = @MaSinhVien;
+
+    COMMIT TRANSACTION;
+    ---- GIAI ĐOẠN 3 — HẬU XỬ LÝ chạy riêng, idempotent --------------------
+    -- dựng lại BangDiemMirror · tính lại SoMonLienCoSo · chuyển lịch sử yêu cầu
+END
+```
+
+**Ba điểm bắt buộc trong đoạn mã trên:**
+
+| | |
+|---|---|
+| `SET XACT_ABORT ON` | ⚠️ Không có nó, một lỗi ở site xa có thể **không** làm rollback toàn bộ → dữ liệu hỏng âm thầm. Với `BEGIN DISTRIBUTED TRANSACTION` đây là bắt buộc |
+| Chèn **trước**, xoá **sau** | Nếu site đích lỗi thì đã rollback trước khi đụng tới dữ liệu gốc |
+| Cập nhật danh bạ **trong** giao dịch | Danh bạ chỉ được đổi khi hồ sơ đã sang tới nơi. Sau đó replication tự đẩy thay đổi ra mọi site |
+
+### ⚠️ Cấu hình MS DTC — việc mới phải làm ở Phần F
+
+Đây là hạ tầng mà bản thiết kế trước **cố tình né**, giờ bắt buộc phải dựng. Trên **mọi máy** tham gia:
+
+| Việc | Chi tiết |
+|---|---|
+| Mở firewall | **TCP 135** (RPC Endpoint Mapper) + **dải RPC động 49152–65535** |
+| Component Services → My Computer → Properties → MSDTC | Bật **Network DTC Access**, **Allow Inbound**, **Allow Outbound** |
+| Chế độ xác thực | ⚠️ **`No Authentication Required`** — bắt buộc trong môi trường **workgroup** (không có domain). `Mutual Authentication` sẽ thất bại vì không có Kerberos |
+| Dịch vụ | `Distributed Transaction Coordinator` đặt `Automatic`, khởi động lại sau khi đổi cấu hình |
+| Linked Server | `rpc out = true` (đã có ở F5) |
+
+**Kiểm tra nhanh** — chạy từ SRV-HCM, phải chạy được mới đi tiếp:
+
+```sql
+BEGIN DISTRIBUTED TRANSACTION;
+SELECT TOP 1 1 FROM SRV_HN.UIS_HN.dbo.SinhVien;
+COMMIT TRANSACTION;
+```
+
+> ⚠️ **MS DTC qua VPN là rủi ro cao** — dải port động rộng, và workgroup không có xác thực lẫn nhau. **Phải đưa vào spike tuần 1**, không để tới tuần 3.
+>
+> **Phương án dự phòng:** nếu MSDTC không chạy được qua VPN, thực hiện giao dịch phân tán giữa **hai named instance trên cùng một máy** — MSDTC nội máy luôn hoạt động. Vẫn là distributed transaction thật, vẫn có `BEGIN DISTRIBUTED TRANSACTION`, vẫn thoả yêu cầu 3. Chỉ mất phần "qua mạng thật", và phải nói rõ trong báo cáo.
+
+### Kịch bản demo — rollback là cảnh đáng quay nhất
+
+```
+1. Chạy sp_ChuyenCoSoSinhVien cho một sinh viên  →  thành công
+   SELECT tại HCM: không còn · tại HN: đã có · danh bạ: đã đổi
+
+2. TẮT SQL Server ở HN, chạy lại cho sinh viên khác
+   →  giao dịch THẤT BẠI, và:
+      • sinh viên vẫn NGUYÊN VẸN ở HCM
+      • danh bạ KHÔNG bị đổi
+      • không có trạng thái nửa vời nào
+
+3. Bật HN lên, chạy lại  →  thành công
+```
+
+Đây chính là minh chứng trực quan cho **tính nguyên tử của giao dịch phân tán**, và là thứ phân biệt 2PC với saga: saga sẽ để lại trạng thái trung gian và cần bù trừ; 2PC thì hoặc xong hết, hoặc như chưa từng xảy ra.
+
+### Đo đạc
+
+Benchmark **B5** so sánh 2PC (ở đây) với saga (D3): latency, thời gian giữ lock, và hành vi khi một site chết giữa chừng. Đây là bằng chứng bằng số cho việc **vì sao mỗi cơ chế được đặt ở chỗ của nó**.
+
+---
+
 ## D5. **Trigger phân quyền và bảo vệ dữ liệu**
 
 Theo D13, trigger lo **toàn vẹn theo site** — thứ không cần biết người dùng là ai.
@@ -1429,6 +1648,41 @@ Agent phải ở trạng thái **Running** và **Startup Type = Automatic** trê
 
 **Cách xử lý:** tạo **cùng một tài khoản Windows cục bộ, trùng username và trùng password trên MỌI máy** (pass-through authentication của workgroup), rồi cho Agent chạy bằng tài khoản đó.
 
+## F4b. **Cấu hình MS DTC** — bắt buộc cho giao dịch phân tán
+
+> ⭐ Cần cho **yêu cầu 3** của giảng viên (D8). ⚠️ Đây là hạng mục **rủi ro cao nhất sau replication** — phải test trong spike tuần 1.
+
+Trên **mọi máy** tham gia giao dịch phân tán:
+
+| Việc | Chi tiết |
+|---|---|
+| Firewall | Mở **TCP 135** (RPC Endpoint Mapper) **+ dải RPC động 49152–65535** |
+| `dcomcnfg` → Component Services → My Computer → Properties → tab **MSDTC** → Security Configuration | Bật **Network DTC Access** · **Allow Inbound** · **Allow Outbound** |
+| Chế độ xác thực | ⚠️ **`No Authentication Required`** — bắt buộc trong **workgroup**. `Mutual Authentication` sẽ thất bại vì không có Kerberos |
+| Dịch vụ | `Distributed Transaction Coordinator` → `Automatic`, **khởi động lại** sau khi đổi cấu hình |
+| Linked Server | `rpc out = true` (đã đặt ở F5) |
+
+**Kiểm tra — phải chạy được mới đi tiếp:**
+
+```sql
+BEGIN DISTRIBUTED TRANSACTION;
+SELECT TOP 1 1 FROM SRV_HN.UIS_HN.dbo.SinhVien;
+COMMIT TRANSACTION;
+```
+
+Lỗi hay gặp và ý nghĩa:
+
+| Thông báo | Nguyên nhân |
+|---|---|
+| `Unable to begin a distributed transaction` | Dịch vụ DTC chưa chạy, hoặc chưa bật Network DTC Access |
+| `The transaction manager has disabled its support for remote/network transactions` | Chưa bật Allow Inbound/Outbound ở máy còn lại |
+| `No such host is known` / treo lâu rồi timeout | Phân giải tên máy sai, hoặc dải RPC động bị firewall chặn |
+| `MSDTC ... authentication` | Đang để `Mutual Authentication` trong môi trường workgroup |
+
+> **Dự phòng nếu MSDTC không qua được VPN:** thực hiện giao dịch phân tán giữa **hai named instance trên cùng một máy** — DTC nội máy luôn hoạt động. Vẫn là `BEGIN DISTRIBUTED TRANSACTION` thật, vẫn thoả yêu cầu 3, chỉ mất phần "qua mạng thật" và phải nói rõ trong báo cáo.
+
+---
+
 ## F5. **Tạo Linked Server**
 
 Linked Server là đối tượng **ở cấp instance**, nên định nghĩa một lần trên **SRV-HCM** là dùng được cho mọi database trên máy đó. Báo cáo tổng hợp chạy trong ngữ cảnh **`UIS_HCM`**, vì dữ liệu cần tổng hợp là dữ liệu vận hành chứ không phải dữ liệu tham chiếu.
@@ -1491,8 +1745,19 @@ Thêm sinh viên · mở lớp học phần · đăng ký học phần · nhập
 
 ### c. **Thống kê** — bốn báo cáo ở D2, chạy trong ngữ cảnh `UIS_HCM` (nơi có Linked Server tới các site còn lại).
 
-### Thử transaction
+### d. **Thử transaction**
 Chạy đăng ký đồng thời (G3), đối soát bất biến (D4), và demo compensating transaction khi hủy đăng ký liên cơ sở.
+
+### e. ⭐ **Giao dịch phân tán — yêu cầu 3 của giảng viên**
+
+| Bước | Việc | Kết quả mong đợi | Chụp |
+|---|---|---|---|
+| 1 | Kiểm tra MSDTC bằng `BEGIN DISTRIBUTED TRANSACTION` đơn giản (F4b) | Chạy được, không lỗi | ☐ |
+| 2 | `EXEC sp_ChuyenCoSoSinhVien` cho một sinh viên | Thành công. `SELECT` tại HCM: không còn · tại HN: đã có · danh bạ: đã đổi | ☐ |
+| 3 | **TẮT SQL Server ở HN**, chạy lại cho sinh viên khác | ❌ **Giao dịch thất bại** — và sinh viên vẫn **nguyên vẹn** ở HCM, danh bạ **không** bị đổi, không có trạng thái nửa vời nào | ☐ |
+| 4 | Bật HN lên, chạy lại | Thành công | ☐ |
+
+> Bước 3 là cảnh đáng quay nhất của cả mục 3.7 — nó chứng minh **tính nguyên tử của giao dịch phân tán** một cách trực quan, và cho thấy khác biệt với saga: saga để lại trạng thái trung gian cần bù trừ, còn 2PC thì hoặc xong hết, hoặc như chưa từng xảy ra.
 
 ---
 
@@ -1560,14 +1825,19 @@ Chạy lần lượt sáu kịch bản D6, mỗi kịch bản chụp màn hình 
 
 Cài một stored procedure dùng MS DTC làm **cùng một việc** với saga, rồi đo:
 
-| | Saga + idempotency | 2PC (MS DTC) |
-|---|---|---|
-| Latency đăng ký liên cơ sở | ? | ? |
-| Thời gian giữ lock trên dòng lớp | ? | ? |
-| Khi Host chết giữa chừng | Yêu cầu `CHO_DUYET`, retry được | Lock treo tới khi DTC resolve |
-| Cấu hình cần thêm | Không | Port 135 + dải RPC động qua VPN |
+Khác với bản trước, **cả hai cơ chế đều đã được cài đặt thật** trong hệ thống — saga cho đăng ký liên cơ sở (D3), 2PC cho chuyển cơ sở (D8). Thí nghiệm này cài thêm **một biến thể 2PC cho đăng ký liên cơ sở** để so sánh trên cùng một nghiệp vụ:
 
-Bảng này trả lời trọn vẹn câu "sao em không dùng distributed transaction?" **bằng số liệu** thay vì bằng lý lẽ. Chi phí: một proc + một buổi đo.
+| Đo trên nghiệp vụ *đăng ký liên cơ sở* | Saga + idempotency (đang dùng) | 2PC (biến thể đối chứng) |
+|---|---|---|
+| Latency p50 / p95 | ? | ? |
+| Thời gian giữ lock trên dòng lớp | ? | ? |
+| Thông lượng khi 100 luồng cùng đăng ký | ? | ? |
+| Khi Host chết giữa chừng | Yêu cầu ở `CHO_DUYET`, retry được | Lock treo tới khi DTC resolve |
+| Cấu hình cần thêm | Không | Port 135 + dải RPC động |
+
+**Câu hỏi thí nghiệm này trả lời:** *"Vì sao chuyển cơ sở dùng 2PC mà đăng ký liên cơ sở lại dùng saga?"* — trả lời **bằng số liệu** thay vì bằng lý lẽ. Chi phí: một proc + một buổi đo.
+
+> ⭐ Đây là mục làm nên khác biệt trong báo cáo. Nhiều nhóm cài được một cơ chế; ít nhóm cài được **cả hai và giải thích được vì sao mỗi cái nằm ở chỗ của nó**.
 
 ## G6. Phân tích và bác bỏ phân mảnh dọc ➕
 
@@ -1587,7 +1857,10 @@ Cố tình đảo thứ tự khóa ở một luồng để tạo deadlock, bắt
 TUẦN 1  ── Phân tích + Cổng chặn kỹ thuật
   □ Đặt vấn đề · Ma trận phân quyền · ERD
   □ ★ BẢNG TẦN SUẤT TRUY CẬP (số liệu thật, có giả định ghi rõ)
-  □ ★ SPIKE REPLICATION ngày 1–3 — CỔNG CHẶN
+  □ ★ SPIKE ngày 1–3 — CỔNG CHẶN, gồm HAI phần:
+       (a) Replication: INSERT ở A → ≤10s thấy ở B
+       (b) MS DTC: BEGIN DISTRIBUTED TRANSACTION qua Linked Server chạy được
+       → cả hai PASS mới đi tiếp. Không PASS → Plan B (I2)
   □ Chốt D12 (2 hay 3 site) + D10 cuối tuần, dựa trên kết quả spike
   □ ★ Bắt đầu chụp screenshot từ hôm nay
 
@@ -1601,6 +1874,7 @@ TUẦN 2  ── Thiết kế + Dữ liệu
 
 TUẦN 3  ── ★ CÀI ĐẶT VẬT LÝ — TUẦN NẶNG ĐIỂM NHẤT
   □ VPN · Link mạng · SQL Server · Agent
+  □ ★ MS DTC (F4b) — port 135 + dải RPC động + No Authentication Required
   □ Linked Server (hình sao từ SRV-HCM)
   □ Publication trên UIS_MASTER
   □ Subscription: UIS_HCM (cục bộ — LÀM TRƯỚC để kiểm chứng)
@@ -1608,10 +1882,11 @@ TUẦN 3  ── ★ CÀI ĐẶT VẬT LÝ — TUẦN NẶNG ĐIỂM NHẤT
   □ ★ Chụp TỪNG MÀN HÌNH, đánh số ngay khi làm
 
 TUẦN 4  ── ★ Mục 3.7 — hoàn tất phần BẮT BUỘC
-  □ Trigger T1–T3 · Database role · demo phân quyền qua SSMS
+  □ Trigger T1–T3 (NOT FOR REPLICATION) · Database role · demo phân quyền qua SSMS
   □ Nhập / Hiển thị / Thống kê (4 báo cáo)
   □ Thử transaction · test 100 luồng · đối soát bất biến
-  ✅ ĐẾN ĐÂY PHẦN BẮT BUỘC ĐÃ XONG — ~75% điểm đã an toàn
+  □ ★ sp_ChuyenCoSoSinhVien (D8) + demo rollback khi tắt site đích
+  ✅ ĐẾN ĐÂY CẢ NĂM YÊU CẦU BẮT BUỘC ĐÃ XONG — ~75% điểm đã an toàn
 
 TUẦN 5  ── Ứng dụng nền tảng ➕
   □ apps/api: SiteContext · RoutingDataSource · 3 port · repository
@@ -1782,6 +2057,7 @@ Không thuê gì, và cũng **không thuê được**: đề bài cần quyền 
 | Rủi ro | Xác suất | Tác động | Giảm thiểu |
 |---|---|---|---|
 | Replication không chạy qua VPN | Cao | Rất cao | Spike tuần 1 · Plan B I2 · checklist F |
+| ⭐ **MS DTC không chạy qua VPN** → mất **yêu cầu 3** của giảng viên | **Cao** | **Rất cao** | Đưa vào spike tuần 1 (F4b) · mở dải RPC động 49152–65535 · `No Authentication Required` cho workgroup · Dự phòng: 2PC giữa hai named instance cùng máy |
 | Snapshot folder để mặc định | Rất cao | Cao | F6 — dùng UNC share ngay từ đầu |
 | Agent không xác thực ra share | Cao | Cao | F4 — tài khoản Windows trùng tên/mật khẩu mọi máy |
 | Máy chủ site không bật được đúng buổi hẹn | Cao | Trung bình | Lịch buổi làm việc cố định (I2b) · giảm số máy · ưu tiên máy để bàn · backup `.bak` hằng tuần |
@@ -1802,6 +2078,7 @@ Không thuê gì, và cũng **không thuê được**: đề bài cần quyền 
 - [ ] **Chốt D15** — tuần 3, sau khi biết chắc **mấy máy có người giữ và bật được đúng buổi hẹn**
 - [ ] Chốt người giữ máy chủ cho từng site (tiêu chí cho `SRV-MASTER`: **ít bị mang đi lại nhất, ưu tiên máy để bàn + đĩa khá**, không phải máy yếu nhất)
 - [ ] **Chốt lịch buổi làm việc cố định** — 2–3 buổi/tuần, cả nhóm cùng online (I2b)
+- [ ] ⭐ **Xác nhận năm yêu cầu bắt buộc với giảng viên** (mục 0.1b) — nhất là yêu cầu 3, để chắc `sp_ChuyenCoSoSinhVien` là hiện thực được chấp nhận
 
 ## I5. Checklist thi công — bản tick nhanh
 
@@ -1814,6 +2091,7 @@ Không thuê gì, và cũng **không thuê được**: đề bài cần quyền 
 | F2 | Tạo đường link giữa các server | `ping <tên máy>` và `telnet <tên máy> 1433` hai chiều **trước** khi đi tiếp | ☐ | ☐ |
 | F3 | Cài SQL Server Developer Edition | Bắt buộc Developer. Mở TCP 1433 inbound. Collation `Vietnamese_CI_AS` | ☐ | ☐ |
 | F4 | Kiểm tra SQL Server Agent | ⚠️ **Cái bẫy nặng nhất:** `NT Service\SQLSERVERAGENT` không xác thực được ra share máy khác trong workgroup. Tạo tài khoản Windows **trùng username + trùng password trên mọi máy** | ☐ | ☐ |
+| **F4b** | ⭐ **Cấu hình MS DTC** | **Bắt buộc cho yêu cầu 3.** Mở TCP 135 + dải RPC động 49152–65535 · bật Network DTC Access / Allow Inbound / Allow Outbound · ⚠️ **`No Authentication Required`** vì là workgroup · khởi động lại dịch vụ DTC | ☐ | ☐ |
 | F5 | Tạo Linked Server | Chặn ánh xạ mặc định **trước**, rồi chỉ mở cho login chạy báo cáo. Tài khoản đầu xa chỉ cần `SELECT` | ☐ | ☐ |
 | F6a | Publication trên `UIS_MASTER` | Publisher là `UIS_MASTER`, **không phải** `UIS_HCM`. Distributor local | ☐ | ☐ |
 | F6b | Snapshot folder | ⚠️ **Lỗi số một giết các nhóm:** bắt buộc **UNC share**, không để mặc định `C:\Program Files\…\ReplData`. Share nằm trên máy chạy **Distributor** | ☐ | ☐ |
@@ -1830,6 +2108,8 @@ Không thuê gì, và cũng **không thuê được**: đề bài cần quyền 
 | F7b-7 | Kiểm chứng **Linked Server** | `SELECT * FROM OPENQUERY(SRV_HN, '…')` từ HCM | ☐ | ☐ |
 | F7c | Thống kê | Bốn báo cáo (D2), chạy trong ngữ cảnh `UIS_HCM` | ☐ | ☐ |
 | F7d | Thử transaction | Test 100 luồng tranh 30 chỗ · Truy vấn đối soát bất biến (phải trả **0 dòng**) · Demo compensating transaction | ☐ | ☐ |
+| **F7e-1** | ⭐ **Giao dịch phân tán — chạy thành công** | `EXEC sp_ChuyenCoSoSinhVien` · kiểm tra 3 CSDL: HCM không còn · HN đã có · danh bạ đã đổi | ☐ | ☐ |
+| **F7e-2** | ⭐ **Giao dịch phân tán — demo ROLLBACK** | **Tắt SQL Server ở site đích** rồi chạy lại → giao dịch thất bại, sinh viên vẫn **nguyên vẹn** ở site cũ, danh bạ **không** đổi | ☐ | ☐ |
 
 ---
 

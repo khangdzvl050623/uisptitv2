@@ -51,6 +51,33 @@ Hệ thống **không** phải single-master. Ghi được phân hoạch theo m�
 
 ---
 
+## ⭐ Năm yêu cầu bắt buộc
+
+Đây là danh sách **phải có** — thiếu một mục là mất điểm nặng. Mọi thứ khác trong dự án đều là phần thêm.
+
+| # | Yêu cầu | Hiện thực ở đâu | Mục |
+|---|---|---|---|
+| 1 | **1 phương pháp phân mảnh** | Phân mảnh ngang theo cơ sở *(có thêm dẫn xuất bậc 1 và bậc 2)* | C3 |
+| 2 | **1 phương pháp replication** | Transactional Replication một chiều `UIS_MASTER` → Subscriber | D1 |
+| 3 | **1 distributed transaction** | **2PC / MS DTC cho chuyển cơ sở sinh viên** — nguyên tử trên 3 CSDL | **D8** |
+| 4 | **1 tình huống concurrency** | 100 luồng tranh 30 chỗ khi đăng ký học phần | D4 |
+| 5 | **1 distributed query** | `OPENQUERY` thống kê toàn hệ thống qua Linked Server | D2 |
+
+### Vì sao có cả 2PC lẫn Saga
+
+Hệ thống dùng **hai cơ chế khác nhau cho hai nghiệp vụ khác nhau** — và giải thích được vì sao mỗi cái nằm ở chỗ của nó:
+
+| | **Chuyển cơ sở sinh viên** | **Đăng ký liên cơ sở** |
+|---|---|---|
+| Cơ chế | **Distributed transaction (2PC)** | **Saga + idempotent receiver** |
+| Tần suất | Vài lần mỗi kỳ | 32.000 lượt/ngày cao điểm |
+| Tranh chấp | Không | Cao — tranh một dòng lớp |
+| Trạng thái trung gian an toàn | **Không có** — sinh viên không thể "nửa ở HCM nửa ở HN" | Có — `CHO_DUYET` |
+
+Benchmark **B5** đo cả hai trên cùng một nghiệp vụ để chứng minh lựa chọn này bằng số liệu.
+
+---
+
 ## Kỹ thuật phân tán áp dụng
 
 | Kỹ thuật | Áp dụng cho |
@@ -58,10 +85,11 @@ Hệ thống **không** phải single-master. Ghi được phân hoạch theo m�
 | **Phân mảnh ngang** | `SinhVien`, `GiangVien`, `TaiKhoan`, `DotDangKy`, `LopHocPhan` |
 | **Phân mảnh ngang dẫn xuất** | `DangKyHocPhan` (bậc 1, `⋉ LopHocPhan`) · `Diem` (bậc 2) |
 | **Nhân bản một chiều** | Danh mục dùng chung + **danh bạ định vị** `DanhBaSinhVien` |
+| **Giao dịch phân tán (2PC / MS DTC)** | **Chuyển cơ sở sinh viên** — nguyên tử trên 3 CSDL |
 | **Linked Server** | Chỉ cho thống kê toàn hệ thống — `OPENQUERY` / `EXEC … AT` |
 | **Tối ưu truy vấn phân tán** | Aggregate pushdown / semi-join, có benchmark đo bằng số liệu |
 | **Xử lý tương tranh** | `UPDATE … WHERE SoLuongDaDangKy < SoLuongToiDa` + 4 lớp ràng buộc |
-| **Saga + Outbox** | Đăng ký liên cơ sở, thay cho distributed transaction / 2PC |
+| **Saga + Outbox** | Đăng ký liên cơ sở — nơi 2PC sẽ giữ lock qua mạng và làm sụp thông lượng |
 | **Ba mức trong suốt** | Fragmentation · Location · Replication transparency |
 
 ---
@@ -119,6 +147,7 @@ Toàn bộ thiết kế nằm trong **một tài liệu duy nhất**: [`docs/UIS
 | Nắm nhanh dự án trong 5 phút | **0.1** bảng quyết định · **0.2** X-Ray · **C0** hai chế độ ghi |
 | Viết báo cáo mục 2.1 / 2.2.1 / 2.2.2 | **Phần A** / **B** / **C** |
 | Làm cài đặt vật lý (mục 3 đề bài) | **Phần F** chi tiết · **I5** checklist tick nhanh |
+| ⭐ Biết đâu là phần **không được phép thiếu** | **0.1b** — năm yêu cầu bắt buộc |
 | Tra nhanh một bảng | **I6** danh sách bảng |
 | Biết còn gì chưa chốt | **I4** việc còn treo |
 | Lo về máy móc, chi phí, uptime | **I2b** vận hành máy chủ |
@@ -281,7 +310,42 @@ npm run dev                     # http://localhost:5173
 
 > ⚠️ **Giữ frontend tối giản.** Không shadcn/ui, không state library, không router phức tạp — chỉ `fetch` + `useState` + bảng và form. Barem chấm ở tầng CSDL; mỗi giờ dành cho UI là một giờ không dành cho replication đang gãy.
 
-### 4. Biến môi trường
+### 4. Truy cập từ máy khác
+
+Một UIS thật thì sinh viên gọi API qua HTTPS từ bất kỳ đâu — nhưng **CSDL của nó không bao giờ mở ra internet**, nó nằm trong mạng nội bộ của trường. **VPN trong dự án này chính là mạng nội bộ đó.** Thứ cần thêm chỉ là lối vào công khai cho tầng API.
+
+```
+Sinh viên (bất kỳ đâu)  ──HTTPS──►  Tầng API  ──VPN──►  CSDL các cơ sở
+                                    (công khai)          (luôn kín)
+```
+
+| Tình huống | Cách | Địa chỉ |
+|---|---|---|
+| Demo trong phòng, cùng wifi | Mở firewall cổng 8080 trên máy chạy API | `http://192.168.x.x:8080` |
+| Nhóm làm ở nhà, khác địa điểm | Mọi người vào cùng mạng VPN | `http://26.x.x.x:8080` |
+| **Bất kỳ đâu, qua internet** | Tunnel miễn phí trên máy chạy API | `https://<tên>.trycloudflare.com` |
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+Một lệnh là có URL HTTPS công khai — không cần IP tĩnh, không mở port router, không tốn tiền. Máy chạy API vẫn ở trong VPN để với tới CSDL.
+
+**Ba cái bẫy khi chạy nhiều máy:**
+
+1. **Vite chỉ nghe `127.0.0.1`** → máy khác không vào được frontend. Đặt `server: { host: true }`, và proxy phải trỏ về **IP máy chạy API**, không phải `localhost`
+2. **Windows Firewall chặn cổng 8080.** Spring Boot đã nghe mọi interface nhưng kết nối vào bị chặn:
+   ```powershell
+   New-NetFirewallRule -DisplayName "UIS API 8080" -Direction Inbound `
+     -Protocol TCP -LocalPort 8080 -Action Allow
+   ```
+3. **CORS** — không phát sinh nếu gộp frontend vào backend, hoặc đi qua proxy Vite
+
+> ⭐ **Khuyến nghị cho demo: gộp frontend vào backend.** `npm run build` rồi chép `dist/*` vào `apps/api/src/main/resources/static/`. Một server, một cổng, một URL — không CORS, không proxy, không phải chạy hai tiến trình.
+
+⚠️ Nếu mở ra internet: mật khẩu CSDL mạnh, `.env` không bao giờ commit (repo đang công khai), không để lộ Swagger/Actuator, và chỉ bật tunnel khi cần demo.
+
+### 5. Biến môi trường
 
 Tạo `apps/api/.env` (đã được `.gitignore` chặn — **không bao giờ commit**):
 
@@ -305,7 +369,8 @@ Việc còn treo — xem mục **I4**:
 - [ ] File Excel phân công đề tài của giảng viên
 - [ ] Tài liệu hướng dẫn Replication của giảng viên
 - [ ] Số liệu quy mô thật (thay giả định trong bảng tần suất)
-- [ ] Chốt số cơ sở và kiểu instance — cuối tuần 1, sau spike replication
+- [ ] Chốt số cơ sở và kiểu instance — cuối tuần 1, sau spike
+- [ ] ⭐ Xác nhận năm yêu cầu bắt buộc với giảng viên, nhất là yêu cầu 3 (giao dịch phân tán)
 - [ ] Chốt người giữ máy chủ từng site + lịch buổi làm việc cố định
 
 ---
@@ -314,10 +379,10 @@ Việc còn treo — xem mục **I4**:
 
 | Tuần | Trọng tâm | |
 |---|---|---|
-| 1 | Phân tích · ERD · bảng tần suất · **spike replication (cổng chặn)** | Bắt buộc |
+| 1 | Phân tích · ERD · bảng tần suất · **spike replication + MS DTC (cổng chặn)** | Bắt buộc |
 | 2 | Thiết kế phân mảnh/ánh xạ/định vị · schema · seed dữ liệu | Bắt buộc |
-| 3 | **Cài đặt vật lý** — VPN · Linked Server · Publication | Bắt buộc |
-| 4 | Trigger · phân quyền · transaction · test tương tranh | Bắt buộc |
+| 3 | **Cài đặt vật lý** — VPN · **MS DTC** · Linked Server · Publication | Bắt buộc |
+| 4 | Trigger · phân quyền · transaction · test tương tranh · **giao dịch phân tán** | Bắt buộc |
 | 5 | Ứng dụng nền tảng | Mở rộng |
 | 6 | Đăng ký liên cơ sở — saga · outbox · projection | Mở rộng |
 | 7 | X-Ray · benchmark · kịch bản sự cố | Mở rộng |
