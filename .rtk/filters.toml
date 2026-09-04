@@ -1,0 +1,41 @@
+# Project-local RTK filters — commit this file with your repo.
+# Filters here override user-global and built-in filters.
+# Docs: https://github.com/rtk-ai/rtk#custom-filters
+schema_version = 1
+
+# --- UISPTITv2 — các tác vụ lặp đi lặp lại của dự án ---
+# Stack dự kiến: Spring Boot (Maven) + SQL Server x2 (sqlcmd) + React/Vite.
+# Các filter dưới đây chỉ cắt phần "noise" cố định, chưa gắn với code cụ thể.
+
+# Maven: bỏ banner Downloading/Progress, chỉ giữ WARNING/ERROR + kết quả build
+[filters.maven]
+description = "Compact Maven build/test output"
+match_command = "^(\./)?mvnw?(\.cmd)?\s"
+strip_ansi = true
+strip_lines_matching = [
+  "^\s*$",
+  "^\[INFO\] Download(ing|ed)",
+  "^Progress \(",
+  "^\[INFO\] -{10,}",
+  "^\[INFO\] Building jar",
+  "^\[INFO\] Copying ",
+  "^\[INFO\] (skip |Nothing to compile|Using 'UTF-8')",
+  "^\[INFO\] Tests are skipped",
+]
+max_lines = 60
+on_empty = "maven: ok"
+
+# sqlcmd: bỏ dòng "(N rows affected)" rỗng và banner Changed database context
+[filters.sqlcmd]
+description = "Compact sqlcmd output (SQL Server 2 site)"
+match_command = "^sqlcmd\s"
+strip_ansi = true
+strip_lines_matching = [
+  "^\s*$",
+  "^Changed database context",
+  "^Changed language setting",
+  "^\(0 rows affected\)$",
+  "^-{5,}$",
+]
+max_lines = 50
+on_empty = "sqlcmd: ok (no rows)"

@@ -1,0 +1,52 @@
+# ---- Bí mật: KHÔNG BAO GIỜ commit ----
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-secret.yml
+*.pfx
+*.key
+secrets/
+
+# ---- Backup CSDL: để trên Drive chung, không đưa vào git ----
+*.bak
+*.trn
+*.mdf
+*.ldf
+*.ndf
+
+# ---- Java / Maven ----
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# ---- Node / Frontend ----
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+*.suo
+*.user
+.vs/
+
+# ---- Hệ điều hành ----
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- Tạm ----
+*.log
+*.tmp
+tmp/
